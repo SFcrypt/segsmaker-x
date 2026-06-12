@@ -22,7 +22,7 @@ def launch_lora_downloader():
     load_style()
     
     main_container = widgets.VBox()
-    output = widgets.Output()
+    output = widgets.Output(wait=True)
     
     link_input = widgets.Text(
         placeholder="Link de descarga",
