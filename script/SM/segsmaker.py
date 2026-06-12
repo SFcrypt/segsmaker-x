@@ -89,10 +89,75 @@ def save_config(zrok_token, launch_args, tunnel):
 
     MARK.write_text(json.dumps(config, indent=4))
 
-def load_css():
-    display(HTML(f'<style>{CSS.read_text()}</style>'))
+def load_box_style():
+    # Cambiar al directorio home
+    os.chdir(os.path.expanduser("~"))
+    
+    # Agregar la ruta donde están los archivos
+    download_dir = Path.home() / ".swar" / "Download"
+    if str(download_dir) not in sys.path:
+        sys.path.insert(0, str(download_dir))
+    
+    try:
+        from box import load_style
+        load_style()
+    except ImportError as e:
+        print(f"No se pudo importar box.py: {e}")
+        # CSS fallback por si no existe box.py
+        css = """
+        .seg-box {
+            background: #1E1F21;
+            border-radius: 12px;
+            padding: 25px;
+            width: 100%;           
+            max-width: 100%;
+            font-family: 'Source Sans Pro', sans-serif;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;    
+            justify-content: center;
+        }
+        .seg-title {
+            color: rgba(255,255,255,0.9);
+            font-size: 27px;        
+            font-weight: 400;       
+            margin-bottom: 12px;
+        }
+        .seg-input-html input {
+            background: #333333;  
+            border: none;
+            border-radius: 12px;
+            padding: 12px 0;
+            width: 80%;
+            margin-bottom: 6px;
+            color: rgba(255,255,255,0.85);
+            font-size: 18px;       
+            text-align: center;
+            transition: none;
+        }
+        .seg-input-html input::placeholder {
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+        }
+        .seg-button {
+            border: 2px solid #C41564;
+            border-radius: 12px;
+            background: #C41564;
+            color: #fff;
+            font-size: 15px;
+            padding: 8px 50px;
+            margin-top: 4px;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .seg-button:hover {
+            background: #db5a94;
+            transform: translateY(-1px);
+        }
+        """
+        display(HTML(f"<style>{css}</style>"))
 
-# NUEVA INTERFAZ (reemplazando la original)
+# NUEVA INTERFAZ
 title = widgets.HTML()
 zrok_token = widgets.Text(placeholder="ZROK Token", layout=widgets.Layout(width="80%", margin="6px 0"))
 zrok_token.add_class("seg-input-html")
@@ -268,7 +333,7 @@ def launch(b):
         condition.notify()
 
 def display_widgets():
-    load_css()
+    load_box_style()  # Ahora carga el diseño de box.py
     load_config()
     display(launch_panel)
     launch_button.on_click(launch)
