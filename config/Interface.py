@@ -2,32 +2,39 @@ import ipywidgets as widgets
 from IPython.display import display, HTML, clear_output
 from IPython import get_ipython
 import os
-from pathlib import Path
-import requests
+import urllib.request
 
 def launch_interface():
-    # Crear directorio base si no existe
-    base_dir = Path.home() / ".segsmaker-x" / "Install"
-    base_dir.mkdir(parents=True, exist_ok=True)
-    
-    # URLs de los scripts a clonar
-    scripts = {
-        "Install.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Install.py",
-        "Uninstall.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Uninstall.py",
-        "Updater.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Updater.py"
-    }
-    
-    # Descargar/clonar los archivos
-    for filename, url in scripts.items():
-        file_path = base_dir / filename
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            file_path.write_text(response.text)
-            print(f"✓ {filename} descargado correctamente")
-        except Exception as e:
-            print(f"✗ Error descargando {filename}: {e}")
-    
+
+    # --- Nueva función para clonar los scripts ---
+    def clonar_scripts():
+        """
+        Descarga los scripts Install.py, Uninstall.py y Updater.py
+        desde GitHub y los guarda en ~/.swar/Install/
+        """
+        # Rutas
+        base_dir = os.path.expanduser("~/.swar")
+        install_dir = os.path.join(base_dir, "Install")
+        os.makedirs(install_dir, exist_ok=True)
+
+        # URLs de los archivos raw en GitHub
+        urls = {
+            "Install.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Install.py",
+            "Uninstall.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Uninstall.py",
+            "Updater.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Updater.py"
+        }
+
+        print("Clonando scripts necesarios...")
+        for nombre, url in urls.items():
+            ruta_destino = os.path.join(install_dir, nombre)
+            try:
+                urllib.request.urlretrieve(url, ruta_destino)
+                print(f"  - {nombre} descargado correctamente.")
+            except Exception as e:
+                print(f"  - Error al descargar {nombre}: {e}")
+        print("---")
+    # --- Fin de la nueva función ---
+
     process_out = widgets.Output()
     css_url = "https://raw.githubusercontent.com/gutris1/segsmaker/refs/heads/main/script/SM/setup.css"
     display(HTML(f'<link rel="stylesheet" type="text/css" href="{css_url}">'))
@@ -35,6 +42,7 @@ def launch_interface():
     instalar_img    = "https://raw.githubusercontent.com/SFcrypt/Segsmaker/main/cover/003219.png"
     desinstalar_img = "https://raw.githubusercontent.com/SFcrypt/Segsmaker/main/cover/092918.png"
 
+    # ... (el estilo HTML se mantiene exactamente igual) ...
     display(HTML(f"""
     <style>
     .setup-box {{
@@ -82,30 +90,34 @@ def launch_interface():
     </style>
     """))
 
+    # --- Funciones actualizadas para ejecutar los scripts clonados ---
     def run_instalar(_):
+        # Ocultar el panel y ejecutar Install.py desde la nueva ruta
         panel.layout.display = "none"
         with process_out:
             clear_output()
+            # 1. Asegurar que los scripts están descargados
+            clonar_scripts()
+            # 2. Ejecutar Install.py
             ip = get_ipython()
             if ip:
-                # Ejecutar los scripts desde la nueva ubicación
-                install_script = base_dir / "Install.py"
-                updater_script = base_dir / "Updater.py"
-                if install_script.exists():
-                    ip.run_line_magic("run", str(install_script))
-                if updater_script.exists():
-                    ip.run_line_magic("run", str(updater_script))
+                ip.run_line_magic("run", "~/.swar/Install/Install.py")
+                # Nota: Install.py ya incluye la ejecución de Updater.py internamente
 
     def run_desinstalar(_):
+        # Ocultar el panel y ejecutar Uninstall.py desde la nueva ruta
         panel.layout.display = "none"
         with process_out:
             clear_output()
+            # 1. Asegurar que los scripts están descargados
+            clonar_scripts()
+            # 2. Ejecutar Uninstall.py
             ip = get_ipython()
             if ip:
-                uninstall_script = base_dir / "Uninstall.py"
-                if uninstall_script.exists():
-                    ip.run_line_magic("run", str(uninstall_script))
+                ip.run_line_magic("run", "~/.swar/Install/Uninstall.py")
+    # --- Fin de las funciones actualizadas ---
 
+    # ... (la creación de botones y la interfaz se mantiene igual) ...
     btn_instalar = widgets.Button(description="instalar")
     btn_desinstalar = widgets.Button(description="desinstalar")
 
