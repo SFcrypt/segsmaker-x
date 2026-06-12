@@ -10,9 +10,9 @@ def launch_interface():
     download_dir.mkdir(parents=True, exist_ok=True)
 
     files = {
-        "box.py": "https://github.com/SFcrypt/segsmaker-x/blob/main/config/Download/box.py",
-        "Model.py": "https://github.com/SFcrypt/segsmaker-x/blob/main/config/Download/Model.py",
-        "Loras.py": "https://github.com/SFcrypt/segsmaker-x/blob/main/config/Download/Loras.py",
+        "box.py": "https://github.com/SFcrypt/segsmaker-x/blob/main/colab/Download/box.py",
+        "Model.py": "https://github.com/SFcrypt/segsmaker-x/blob/main/colab/Download/Model.py",
+        "Loras.py": "https://github.com/SFcrypt/Segsmaker-x/blob/main/colab/Download/Loras.py",
     }
 
     for filename, url in files.items():
