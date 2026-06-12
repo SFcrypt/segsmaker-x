@@ -3,12 +3,13 @@ from IPython.display import display, clear_output
 from IPython import get_ipython
 from pathlib import Path
 import sys
+import os
 
 def launch_lora_downloader():
     ipy = get_ipython()
     
-    # Cambiar al directorio home
-    ipy.run_line_magic("cd", "~")
+    # Cambiar al directorio home sin mostrar salida
+    os.chdir(os.path.expanduser("~"))
     
     # Agregar la ruta donde ya están los archivos descargados
     download_dir = Path.home() / ".swar" / "Download"
