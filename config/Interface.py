@@ -2,19 +2,32 @@ import ipywidgets as widgets
 from IPython.display import display, HTML, clear_output
 from IPython import get_ipython
 import os
-import subprocess
+from pathlib import Path
+import requests
 
 def launch_interface():
-    # Clonar repositorio .segsmaker-x
-    repo_url = "https://github.com/SFcrypt/segsmaker-x.git"
-    repo_dir = ".segsmaker-x"
+    # Crear directorio base si no existe
+    base_dir = Path.home() / ".segsmaker-x" / "Install"
+    base_dir.mkdir(parents=True, exist_ok=True)
     
-    if not os.path.exists(repo_dir):
+    # URLs de los scripts a clonar
+    scripts = {
+        "Install.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Install.py",
+        "Uninstall.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Uninstall.py",
+        "Updater.py": "https://raw.githubusercontent.com/SFcrypt/segsmaker-x/main/config/Install/Updater.py"
+    }
+    
+    # Descargar/clonar los archivos
+    for filename, url in scripts.items():
+        file_path = base_dir / filename
         try:
-            subprocess.run(["git", "clone", repo_url, repo_dir], check=True, capture_output=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return
-
+            response = requests.get(url)
+            response.raise_for_status()
+            file_path.write_text(response.text)
+            print(f"✓ {filename} descargado correctamente")
+        except Exception as e:
+            print(f"✗ Error descargando {filename}: {e}")
+    
     process_out = widgets.Output()
     css_url = "https://raw.githubusercontent.com/gutris1/segsmaker/refs/heads/main/script/SM/setup.css"
     display(HTML(f'<link rel="stylesheet" type="text/css" href="{css_url}">'))
@@ -75,8 +88,13 @@ def launch_interface():
             clear_output()
             ip = get_ipython()
             if ip:
-                ip.run_line_magic("run", ".swarmui/Install.py")
-                ip.run_line_magic("run", ".swarmui/Updater.py")
+                # Ejecutar los scripts desde la nueva ubicación
+                install_script = base_dir / "Install.py"
+                updater_script = base_dir / "Updater.py"
+                if install_script.exists():
+                    ip.run_line_magic("run", str(install_script))
+                if updater_script.exists():
+                    ip.run_line_magic("run", str(updater_script))
 
     def run_desinstalar(_):
         panel.layout.display = "none"
@@ -84,7 +102,9 @@ def launch_interface():
             clear_output()
             ip = get_ipython()
             if ip:
-                ip.run_line_magic("run", ".swarmui/Uninstall.py")
+                uninstall_script = base_dir / "Uninstall.py"
+                if uninstall_script.exists():
+                    ip.run_line_magic("run", str(uninstall_script))
 
     btn_instalar = widgets.Button(description="instalar")
     btn_desinstalar = widgets.Button(description="desinstalar")
