@@ -4,7 +4,7 @@ from IPython import get_ipython
 from pathlib import Path
 import sys
 
-def launch_model_downloader():
+def launch_lora_downloader():
     ipy = get_ipython()
     
     # Cambiar al directorio home
@@ -38,9 +38,9 @@ def launch_model_downloader():
         layout=widgets.Layout(height="35px", padding="0 0px"))
     download_btn.add_class("seg-button")
     
-    def descargar_modelo(b):
+    def descargar_lora(b):
         if ipy:
-            ipy.run_line_magic("cd", "$CKPT")
+            ipy.run_line_magic("cd", "$LORA")
         main_container.children = [output]
         with output:
             clear_output()
@@ -57,10 +57,10 @@ def launch_model_downloader():
             except:
                 pass
     
-    download_btn.on_click(descargar_modelo)
+    download_btn.on_click(descargar_lora)
     
     form_box = widgets.VBox([
-        widgets.HTML("<div class='seg-title'>Descargar Modelo</div>"),
+        widgets.HTML("<div class='seg-title'>Descargar Lora</div>"),
         link_input,
         nombre_input,
         download_btn])
@@ -70,4 +70,4 @@ def launch_model_downloader():
     display(main_container)
 
 # ejecutar
-launch_model_downloader()
+launch_lora_downloader()
