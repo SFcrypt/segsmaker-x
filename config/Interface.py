@@ -5,23 +5,15 @@ import os
 import subprocess
 
 def launch_interface():
-    # Clonar repositorio si no existe la carpeta .segsmaker-x
+    # Clonar repositorio .segsmaker-x
     repo_url = "https://github.com/SFcrypt/segsmaker-x.git"
     repo_dir = ".segsmaker-x"
     
     if not os.path.exists(repo_dir):
-        print(f"Clonando repositorio {repo_url} en {repo_dir}...")
         try:
-            subprocess.run(["git", "clone", repo_url, repo_dir], check=True)
-            print("Repositorio clonado exitosamente.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error al clonar el repositorio: {e}")
+            subprocess.run(["git", "clone", repo_url, repo_dir], check=True, capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
             return
-        except FileNotFoundError:
-            print("Error: Git no está instalado o no está disponible en el PATH.")
-            return
-    else:
-        print(f"La carpeta {repo_dir} ya existe. Continuando...")
 
     process_out = widgets.Output()
     css_url = "https://raw.githubusercontent.com/gutris1/segsmaker/refs/heads/main/script/SM/setup.css"
