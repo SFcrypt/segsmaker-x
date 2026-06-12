@@ -48,13 +48,14 @@ def load_config():
     arg = config.get('launch_args')
     tunnell = config.get('tunnel')
     zrok_token.value = config.get('zrok_token', '')
+    ngrok_token.value = config.get('ngrok_token', '')
 
     if arg:
         launch_args.value = arg
     else:
         launch_args.value = get_args(ui)
 
-    if tunnell in ['Pinggy', 'ZROK']:
+    if tunnell in ['Pinggy', 'ZROK', 'NGROK']:
         tunnel.value = tunnell
     else:
         tunnel.value = 'Pinggy'
@@ -77,11 +78,12 @@ def load_config():
 
     title.value = f"<div class='seg-title'>{ui_titles.get(ui, 'Unknown UI')}</div>"
 
-def save_config(zrok_token, launch_args, tunnel):
+def save_config(zrok_token, ngrok_token, launch_args, tunnel):
     config = json.loads(MARK.read_text()) if MARK.exists() else {}
 
     config.update({
         'zrok_token': zrok_token,
+        'ngrok_token': ngrok_token,
         'launch_args': launch_args,
         'tunnel': tunnel,
         'cpu_usage': cpu_cb.value
@@ -89,21 +91,17 @@ def save_config(zrok_token, launch_args, tunnel):
 
     MARK.write_text(json.dumps(config, indent=4))
 
-def load_box_style():
-    # Cambiar al directorio home
-    os.chdir(os.path.expanduser("~"))
-    
-    # Agregar la ruta donde están los archivos
-    download_dir = Path.home() / ".swar" / "Download"
-    if str(download_dir) not in sys.path:
-        sys.path.insert(0, str(download_dir))
-    
+def load_css():
+    # Cargar estilo desde box.py
     try:
+        os.chdir(os.path.expanduser("~"))
+        download_dir = Path.home() / ".swar" / "Download"
+        if str(download_dir) not in sys.path:
+            sys.path.insert(0, str(download_dir))
         from box import load_style
         load_style()
-    except ImportError as e:
-        print(f"No se pudo importar box.py: {e}")
-        # CSS fallback por si no existe box.py
+    except Exception as e:
+        # Si no funciona, usar CSS local
         css = """
         .seg-box {
             background: #1E1F21;
@@ -157,11 +155,12 @@ def load_box_style():
         """
         display(HTML(f"<style>{css}</style>"))
 
-# NUEVA INTERFAZ
+# ============ NUEVA INTERFAZ ============
 title = widgets.HTML()
 zrok_token = widgets.Text(placeholder="ZROK Token", layout=widgets.Layout(width="80%", margin="6px 0"))
 zrok_token.add_class("seg-input-html")
-
+ngrok_token = widgets.Text(placeholder="NGROK Token", layout=widgets.Layout(width="80%", margin="6px 0"))
+ngrok_token.add_class("seg-input-html")
 launch_args = widgets.Text(
     placeholder="Launch Arguments (ej: --xformers --opt-sdp-attention)",
     layout=widgets.Layout(width="80%", margin="6px 0")
@@ -172,7 +171,7 @@ cpu_cb = widgets.Checkbox(value=False, description="Modo CPU", layout=widgets.La
 
 # Selector de tunel con ToggleButtons
 tunnel = widgets.ToggleButtons(
-    options=['Pinggy', 'ZROK'],
+    options=['Pinggy', 'ZROK', 'NGROK'],
     button_style='',
     layout=widgets.Layout(
         display='flex',
@@ -184,27 +183,42 @@ tunnel = widgets.ToggleButtons(
 tunnel.style = {'button_width': '100px'}
 
 def update_tunnel_style(change):
-    if change['new'] in ['Pinggy', 'ZROK']:
+    if change['new'] in ['Pinggy', 'ZROK', 'NGROK']:
         tunnel.style = {'button_width': '100px', 'colors': {'selected': '#C41564'}}
 
 tunnel.observe(update_tunnel_style, 'value')
 
-# Boton Iniciar
+# Botones
 launch_button = widgets.Button(description="Iniciar", layout=widgets.Layout(height="35px", padding="0 50px"))
 launch_button.add_class("seg-button")
+
+exit_button = widgets.Button(description="Exit", layout=widgets.Layout(height="35px", padding="0 50px"))
+exit_button.add_class("seg-button")
+
+button_box = widgets.HBox(
+    [launch_button, exit_button],
+    layout=widgets.Layout(
+        display='flex',
+        gap='20px',
+        justify_content='center',
+        margin='15px 0 0 0'
+    )
+)
 
 # Formulario completo
 form_box = widgets.VBox([
     title,
     tunnel,
     zrok_token,
+    ngrok_token,
     launch_args,
     cpu_cb,
-    launch_button
+    button_box
 ])
 form_box.add_class("seg-box")
 
 launch_panel = form_box
+# ============ FIN NUEVA INTERFAZ ============
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--skip-comfyui-check', action='store_true', help='Skip checking custom node dependencies for ComfyUI')
@@ -220,6 +234,11 @@ def NGROK_ZROK(T):
             'B': HOME / '.zrok/bin/zrok',
             'C': HOME / '.zrok/environment.json',
             't': zrok_token.value
+        },
+        'ngrok': {
+            'B': HOME / '.ngrok/bin/ngrok',
+            'C': HOME / '.config/ngrok/ngrok.yml',
+            't': ngrok_token.value
         }
     }
 
@@ -230,12 +249,14 @@ def NGROK_ZROK(T):
     if not B.exists():
         print(f'{ERR}: {T.upper()} is not installed'); sys.exit()
 
-    E = f'{T} enable {t}'
+    E = f'{T} enable {t}' if T == 'zrok' else f'{T} config add-authtoken {t}'
 
     if C.exists():
         ct = None
         if T == 'zrok':
             ct = json.loads(C.read_text()).get('zrok_token')
+        elif T == 'ngrok':
+            ct = yaml.safe_load(C.read_text()).get('agent', {}).get('authtoken')
 
         if ct != t:
             if T == 'zrok':
@@ -245,7 +266,7 @@ def NGROK_ZROK(T):
         SyS(E); print()
 
 def launching(ui, skip_comfyui_check=False):
-    args = f'{launch_args.value}'
+    args_launch = f'{launch_args.value}'
     tunnel_name = tunnel.value
 
     get_ipython().run_line_magic('run', 'venv.py')
@@ -253,7 +274,7 @@ def launching(ui, skip_comfyui_check=False):
     if ui in ['A1111', 'Forge', 'ReForge', 'Forge-Classic']:
         port = 7860
         PY = '/tmp/python311/bin/python3' if ui == 'Forge-Classic' else '/tmp/venv/bin/python3'
-        args += ' --enable-insecure-extension-access --disable-console-progressbars --theme dark'
+        args_launch += ' --enable-insecure-extension-access --disable-console-progressbars --theme dark'
 
     elif ui in ['ComfyUI', 'SwarmUI']:
         PY = '/tmp/venv-comfy-swarm/bin/python3'
@@ -274,17 +295,22 @@ def launching(ui, skip_comfyui_check=False):
 
     if cpu_cb.value:
         if ui == 'A1111':
-            args += ' --use-cpu all --precision full --no-half --skip-torch-cuda-test'
+            args_launch += ' --use-cpu all --precision full --no-half --skip-torch-cuda-test'
         elif ui in ['Forge', 'ReForge', 'Forge-Classic']:
-            args += ' --always-cpu --skip-torch-cuda-test'
+            args_launch += ' --always-cpu --skip-torch-cuda-test'
         elif ui == 'ComfyUI':
-            args += ' --cpu'
+            args_launch += ' --cpu'
 
     tunnel_config = {
         'Pinggy': {
             'command': f'ssh -o StrictHostKeyChecking=no -p 80 -R0:localhost:{port} a.pinggy.io',
             'name': 'PINGGY',
             'pattern': r'https://[\w-]+\.run\.pinggy-free\.link'
+        },
+        'NGROK': {
+            'command': f'ngrok http http://localhost:{port} --log stdout',
+            'name': 'NGROK',
+            'pattern': r'https://[\w-]+\.ngrok-free\.[\w.-]+'
         },
         'ZROK': {
             'command': f'zrok share public localhost:{port} --headless',
@@ -293,8 +319,8 @@ def launching(ui, skip_comfyui_check=False):
         }
     }
 
-    c = f'{PY} Launcher.py {args}'
-    cmd = {key: c for key in ['Pinggy', 'ZROK']}.get(tunnel_name)
+    c = f'{PY} Launcher.py {args_launch}'
+    cmd = {key: c for key in ['Pinggy', 'ZROK', 'NGROK']}.get(tunnel_name)
     configs = tunnel_config.get(tunnel_name)
 
     if cmd and configs:
@@ -302,6 +328,7 @@ def launching(ui, skip_comfyui_check=False):
             from cupang import Tunnel as Alice_Zuberg
 
             if tunnel_name == 'ZROK': NGROK_ZROK('zrok')
+            if tunnel_name == 'NGROK': NGROK_ZROK('ngrok')
 
             Alice_Synthesis_Thirty = Alice_Zuberg(port)
             Alice_Synthesis_Thirty.logger.setLevel(logging.DEBUG)
@@ -325,18 +352,22 @@ def waiting(condition, is_ready):
     launching(ui, skip_comfyui_check=args.skip_comfyui_check)
 
 def launch(b):
-    global ui, zrok_token, launch_args, tunnel
+    global ui, zrok_token, ngrok_token, launch_args, tunnel
     launch_panel.close()
-    save_config(zrok_token.value, launch_args.value, tunnel.value)
+    save_config(zrok_token.value, ngrok_token.value, launch_args.value, tunnel.value)
     with condition:
         is_ready.value = True
         condition.notify()
 
+def exit(b):
+    launch_panel.close()
+
 def display_widgets():
-    load_box_style()  # Ahora carga el diseño de box.py
     load_config()
+    load_css()
     display(launch_panel)
     launch_button.on_click(launch)
+    exit_button.on_click(exit)
 
 if __name__ == '__main__':
     try:
